@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: booking-stadium
+
+  # ========================
+  # MySQL Configuration
+  # ========================
+  datasource:
+    url: jdbc:mysql://localhost:3307/booking_stadium?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8&useUnicode=true&connectionCollation=utf8mb4_unicode_ci
+    username: booking_user
+    password: booking_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: BookingStadiumPool
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 30000
+
+  # ========================
+  # JPA / Hibernate
+  # ========================
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+    open-in-view: false
+    defer-datasource-initialization: true
+
+  # ========================
+  # SQL Init (seed data)
+  # ========================
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+
+  # ========================
+  # File Upload Configuration
+  # ========================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+  # ========================
+  # Redis Configuration
+  # ========================
+  data:
+    redis:
+      host: localhost
+      port: 6380
+      password: redis123
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3000ms
+
+# ========================
+# Server Configuration
+# ========================
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# ========================
+# JWT Configuration
+# ========================
+app:
+  jwt:
+    secret: bG9uZ1NlY3JldEtleUZvckpXVEF1dGhlbnRpY2F0aW9uQm9va2luZ1N0YWRpdW0yMDI2
+    expiration-ms: 86400000       # 24 hours
+    refresh-expiration-ms: 604800000  # 7 days
+  social:
+    default-password: Social@123456
+  upload:
+    dir: uploads
+
+# ========================
+# Swagger / OpenAPI
+# ========================
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# ========================
+# Logging
+# ========================
+logging:
+  level:
+    root: INFO
+    com.booking.stadium: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
