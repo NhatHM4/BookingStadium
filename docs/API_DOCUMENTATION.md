@@ -788,9 +788,68 @@ POST /api/v1/bookings
   "timeSlotId": 1,                     // required
   "bookingDate": "2025-03-15",         // required (yyyy-MM-dd)
   "note": "Đặt cho team ABC",          // optional
-  "isMatchRequest": false              // optional, default: false
+  "isMatchRequest": false,             // optional, default: false
+  
+  // ========== Fields cho Match Request (chỉ dùng khi isMatchRequest = true) ==========
+  
+  // === OPTION 1: Dùng đội có sẵn ===
+  "teamId": 5,                         // optional: ID đội có sẵn (nếu đã có đội)
+  
+  // === OPTION 2: Tạo đội nhanh ===
+  "createQuickTeam": true,             // optional: true = tạo đội nhanh tại màn hình
+  "quickTeamName": "Team ABC",         // required nếu createQuickTeam = true: Tên đội mới
+  "quickTeamSkillLevel": "INTERMEDIATE", // optional: Trình độ đội (ANY | BEGINNER | INTERMEDIATE | ADVANCED | EXPERT)
+  
+  // === OPTION 3: Không cần đội - chỉ tên + SĐT ===
+  "hostName": "Nguyễn Văn A",          // required nếu không có teamId và createQuickTeam = false: Tên người chơi
+  "contactPhone": "0987654321",        // required nếu không có team: SĐT liên hệ
+  
+  // === Thông tin chung ===
+  "requiredSkillLevel": "INTERMEDIATE",// optional: Yêu cầu trình độ đối thủ
+  "costSharing": "WIN_LOSE",           // optional: WIN_LOSE (70/30 mặc định) | EQUAL_SPLIT | HOST_PAY | OPPONENT_PAY | CUSTOM
+  "hostSharePercent": 70.00,           // optional: % tiền chủ nhà trả (chỉ dùng khi costSharing = CUSTOM)
+  "opponentSharePercent": 30.00,       // optional: % tiền đối thủ trả (chỉ dùng khi costSharing = CUSTOM)
+  "matchMessage": "Tìm đối ráp kèo"    // optional: Lời nhắn cho đối thủ
 }
 ```
+
+**⭐ CÁC OPTION KHI TẠO TRẬN RÁP KÈO:**
+
+**Option 1 - Dùng đội có sẵn:**
+```json
+{
+  "isMatchRequest": true,
+  "teamId": 5,
+  "contactPhone": "0987654321"
+}
+```
+- Dùng đội đã tạo trước đó
+- Bạn phải là **đội trưởng** của đội đó
+
+**Option 2 - Tạo đội nhanh:**
+```json
+{
+  "isMatchRequest": true,
+  "createQuickTeam": true,
+  "quickTeamName": "Team ABC",
+  "quickTeamSkillLevel": "INTERMEDIATE",
+  "contactPhone": "0987654321"
+}
+```
+- Hệ thống tự động tạo đội mới với bạn là đội trưởng
+- Không cần vào màn hình quản lý đội
+
+**Option 3 - Không cần đội (chỉ tên + SĐT):**
+```json
+{
+  "isMatchRequest": true,
+  "hostName": "Nguyễn Văn A",
+  "contactPhone": "0987654321"
+}
+```
+- Không cần tạo đội
+- Hệ thống tạo team tạm thời với tên người chơi
+- Phù hợp cho người chơi cá nhân
 
 **Response:** `201 Created`
 ```json
@@ -810,7 +869,7 @@ POST /api/v1/bookings
     "startTime": "06:00",
     "endTime": "07:30",
     "bookingDate": "2025-03-15",
-    "isMatchRequest": false,
+    "isMatchRequest": true,
     "totalPrice": 350000,
     "depositAmount": 105000,
     "remainingAmount": 245000,
@@ -824,6 +883,21 @@ POST /api/v1/bookings
   }
 }
 ```
+
+**⭐ CÁCH CHIA PHÍ MỚI:**
+- **WIN_LOSE** (mặc định): Đội thắng trả 70%, đội thua trả 30%
+  - Tỷ lệ này được set mặc định khi tạo match request
+  - Sau khi trận đấu kết thúc, hệ thống sẽ cập nhật lại dựa trên kết quả
+- **EQUAL_SPLIT**: Chia đều 50/50
+- **HOST_PAY**: Chủ nhà trả 100%
+- **OPPONENT_PAY**: Đối thủ trả 100%
+- **CUSTOM**: Tự định nghĩa tỷ lệ (hostSharePercent + opponentSharePercent = 100%)
+
+**⭐ LƯU Ý:**
+- Match request được tạo với status `OPEN`, cho phép các đội khác vào nhận kèo
+- Match request tự động hết hạn **2 giờ trước** giờ đá
+- Nếu không truyền `costSharing`, mặc định là `WIN_LOSE` (70/30)
+- Tham khảo thêm **Match Making APIs** để biết cách quản lý và nhận kèo
 
 ---
 
@@ -1368,6 +1442,8 @@ PUT /api/v1/team-invites/{id}/reject
 
 ## 11. Match Making APIs (Ráp kèo)
 
+> **⭐ Lưu ý:** Bạn có thể tạo match request trực tiếp khi đặt sân bằng cách set `isMatchRequest = true` trong API `POST /api/v1/bookings`. Xem thêm tại **Section 7.2**.
+
 ### 11.1 Tạo kèo ráp đối
 ```
 POST /api/v1/match-requests
@@ -1380,9 +1456,9 @@ POST /api/v1/match-requests
   "bookingId": 1,                      // required — booking đã CONFIRMED/DEPOSIT_PAID
   "teamId": 1,                        // required — đội của bạn
   "requiredSkillLevel": "INTERMEDIATE",// optional: ANY | BEGINNER | INTERMEDIATE | ADVANCED | PRO
-  "costSharing": "EQUAL_SPLIT",       // optional: EQUAL_SPLIT | HOST_PAY | OPPONENT_PAY | CUSTOM
-  "hostSharePercent": 50,             // optional (dùng khi CUSTOM)
-  "opponentSharePercent": 50,         // optional (dùng khi CUSTOM)
+  "costSharing": "WIN_LOSE",          // optional: WIN_LOSE (70/30 mặc định) | EQUAL_SPLIT | HOST_PAY | OPPONENT_PAY | CUSTOM
+  "hostSharePercent": 70,             // optional (dùng khi CUSTOM)
+  "opponentSharePercent": 30,         // optional (dùng khi CUSTOM)
   "message": "Tìm đối 5 người",       // optional
   "contactPhone": "0901234567"         // optional
 }
@@ -1414,11 +1490,11 @@ POST /api/v1/match-requests
     "opponentTeamLogoUrl": null,
     "fieldType": "FIVE_A_SIDE",
     "requiredSkillLevel": "INTERMEDIATE",
-    "costSharing": "EQUAL_SPLIT",
-    "hostSharePercent": 50,
-    "opponentSharePercent": 50,
+    "costSharing": "WIN_LOSE",
+    "hostSharePercent": 70,
+    "opponentSharePercent": 30,
     "totalPrice": 350000,
-    "opponentAmount": 175000,
+    "opponentAmount": 105000,
     "message": "Tìm đối 5 người",
     "contactPhone": "0901234567",
     "status": "OPEN",
@@ -1835,6 +1911,7 @@ GET /api/v1/health
 ### CostSharing
 | Value | Mô tả |
 |-------|--------|
+| `WIN_LOSE` | Đội thắng 70%, đội thua 30% (Mặc định) |
 | `EQUAL_SPLIT` | Chia đều 50/50 |
 | `HOST_PAY` | Chủ kèo trả hết |
 | `OPPONENT_PAY` | Đội khách trả hết |

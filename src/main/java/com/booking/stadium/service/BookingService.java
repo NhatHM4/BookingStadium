@@ -4,8 +4,7 @@ import com.booking.stadium.dto.booking.AvailableSlotResponse;
 import com.booking.stadium.dto.booking.BookingRequest;
 import com.booking.stadium.dto.booking.BookingResponse;
 import com.booking.stadium.entity.*;
-import com.booking.stadium.enums.BookingStatus;
-import com.booking.stadium.enums.DepositStatus;
+import com.booking.stadium.enums.*;
 import com.booking.stadium.exception.BadRequestException;
 import com.booking.stadium.exception.ResourceNotFoundException;
 import com.booking.stadium.exception.UnauthorizedException;
@@ -36,17 +35,23 @@ public class BookingService {
     private final TimeSlotRepository timeSlotRepository;
     private final UserRepository userRepository;
     private final DepositPolicyRepository depositPolicyRepository;
+    private final MatchRequestRepository matchRequestRepository;
+    private final TeamRepository teamRepository;
 
     public BookingService(BookingRepository bookingRepository,
-                          FieldRepository fieldRepository,
-                          TimeSlotRepository timeSlotRepository,
-                          UserRepository userRepository,
-                          DepositPolicyRepository depositPolicyRepository) {
+            FieldRepository fieldRepository,
+            TimeSlotRepository timeSlotRepository,
+            UserRepository userRepository,
+            DepositPolicyRepository depositPolicyRepository,
+            MatchRequestRepository matchRequestRepository,
+            TeamRepository teamRepository) {
         this.bookingRepository = bookingRepository;
         this.fieldRepository = fieldRepository;
         this.timeSlotRepository = timeSlotRepository;
         this.userRepository = userRepository;
         this.depositPolicyRepository = depositPolicyRepository;
+        this.matchRequestRepository = matchRequestRepository;
+        this.teamRepository = teamRepository;
     }
 
     // ========== PUBLIC ==========
@@ -158,6 +163,12 @@ public class BookingService {
                 .build();
 
         booking = bookingRepository.save(booking);
+
+        // Tự động tạo match request nếu isMatchRequest = true
+        if (Boolean.TRUE.equals(request.getIsMatchRequest())) {
+            createMatchRequestForBooking(booking, request, customer);
+        }
+
         return BookingResponse.fromEntity(booking);
     }
 
@@ -308,11 +319,11 @@ public class BookingService {
             boolean hasParentConflict = parentBookings.stream()
                     .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
                     .anyMatch(b -> b.getTimeSlot().getId().equals(timeSlotId));
-            
+
             if (hasParentConflict) {
                 throw new BadRequestException(
-                    "Không thể đặt sân này vì sân ghép lớn hơn (" + parentField.getName() + 
-                    ") đã được đặt trong khung giờ này");
+                        "Không thể đặt sân này vì sân ghép lớn hơn (" + parentField.getName() +
+                                ") đã được đặt trong khung giờ này");
             }
         }
 
@@ -324,11 +335,11 @@ public class BookingService {
                 boolean hasChildConflict = childBookings.stream()
                         .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
                         .anyMatch(b -> b.getTimeSlot().getId().equals(timeSlotId));
-                
+
                 if (hasChildConflict) {
                     throw new BadRequestException(
-                        "Không thể đặt sân ghép này vì sân con (" + childField.getName() + 
-                        ") đã được đặt trong khung giờ này");
+                            "Không thể đặt sân ghép này vì sân con (" + childField.getName() +
+                                    ") đã được đặt trong khung giờ này");
                 }
             }
         }
@@ -365,5 +376,155 @@ public class BookingService {
         }
 
         return bookedSlotIds;
+    }
+
+    /**
+     * Tự động tạo match request khi đặt sân với isMatchRequest = true
+     * Support 3 options:
+     * 1. Dùng đội có sẵn (teamId)
+     * 2. Tạo đội nhanh (createQuickTeam = true)
+     * 3. Không cần đội - tạo team với tên người chơi (hostName)
+     */
+    private void createMatchRequestForBooking(Booking booking, BookingRequest request, User customer) {
+        Team hostTeam = null;
+
+        // === OPTION 1: Dùng đội có sẵn ===
+        if (request.getTeamId() != null) {
+            hostTeam = teamRepository.findById(request.getTeamId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Team", "id", request.getTeamId()));
+
+            if (!hostTeam.getCaptain().getId().equals(customer.getId())) {
+                throw new BadRequestException("Bạn phải là đội trưởng để tạo kèo");
+            }
+
+            if (!hostTeam.getIsActive()) {
+                throw new BadRequestException("Đội đã bị giải tán");
+            }
+        }
+        // === OPTION 2: Tạo đội nhanh ===
+        else if (Boolean.TRUE.equals(request.getCreateQuickTeam())) {
+            if (request.getQuickTeamName() == null || request.getQuickTeamName().trim().isEmpty()) {
+                throw new BadRequestException("Tên đội là bắt buộc khi tạo đội nhanh");
+            }
+
+            hostTeam = createQuickTeam(customer, request);
+        }
+        // === OPTION 3: Không cần đội - chỉ cần tên + SĐT ===
+        else {
+            if (request.getHostName() == null || request.getHostName().trim().isEmpty()) {
+                throw new BadRequestException("Tên người chơi là bắt buộc khi không có đội");
+            }
+            if (request.getContactPhone() == null || request.getContactPhone().trim().isEmpty()) {
+                throw new BadRequestException("Số điện thoại là bắt buộc khi không có đội");
+            }
+
+            // Tạo team tạm với tên người chơi
+            hostTeam = createTemporaryTeam(customer, request.getHostName());
+        }
+
+        // Set cost sharing - Mặc định WIN_LOSE (70/30)
+        CostSharing costSharing = request.getCostSharing() != null ? request.getCostSharing() : CostSharing.WIN_LOSE;
+        BigDecimal hostShare = new BigDecimal("50.00");
+        BigDecimal opponentShare = new BigDecimal("50.00");
+
+        switch (costSharing) {
+            case WIN_LOSE:
+                // 70/30 - Đội thắng trả 70%, đội thua trả 30%
+                // Ở đây set default, sau khi trận đấu kết thúc sẽ update lại
+                hostShare = new BigDecimal("70.00");
+                opponentShare = new BigDecimal("30.00");
+                break;
+            case EQUAL_SPLIT:
+                hostShare = new BigDecimal("50.00");
+                opponentShare = new BigDecimal("50.00");
+                break;
+            case HOST_PAY:
+                hostShare = new BigDecimal("100.00");
+                opponentShare = BigDecimal.ZERO;
+                break;
+            case OPPONENT_PAY:
+                hostShare = BigDecimal.ZERO;
+                opponentShare = new BigDecimal("100.00");
+                break;
+            case CUSTOM:
+                if (request.getHostSharePercent() != null && request.getOpponentSharePercent() != null) {
+                    hostShare = request.getHostSharePercent();
+                    opponentShare = request.getOpponentSharePercent();
+                    if (hostShare.add(opponentShare).compareTo(new BigDecimal("100.00")) != 0) {
+                        throw new BadRequestException("Tổng tỷ lệ chia phải bằng 100%");
+                    }
+                }
+                break;
+        }
+
+        BigDecimal opponentAmount = booking.getTotalPrice()
+                .multiply(opponentShare)
+                .divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+
+        // Tính expired_at = booking date/time - 2 giờ
+        LocalDateTime bookingDateTime = booking.getBookingDate()
+                .atTime(booking.getTimeSlot().getStartTime());
+        LocalDateTime expiredAt = bookingDateTime.minusHours(2);
+
+        String matchCode = generateMatchCode();
+
+        MatchRequest matchRequest = MatchRequest.builder()
+                .matchCode(matchCode)
+                .booking(booking)
+                .hostTeam(hostTeam)
+                .fieldType(booking.getField().getFieldType())
+                .requiredSkillLevel(
+                        request.getRequiredSkillLevel() != null ? request.getRequiredSkillLevel() : SkillLevel.ANY)
+                .costSharing(costSharing)
+                .hostSharePercent(hostShare)
+                .opponentSharePercent(opponentShare)
+                .opponentAmount(opponentAmount)
+                .message(request.getMatchMessage())
+                .contactPhone(request.getContactPhone())
+                .expiredAt(expiredAt)
+                .status(MatchStatus.OPEN)
+                .build();
+
+        matchRequestRepository.save(matchRequest);
+    }
+
+    /**
+     * Tạo đội nhanh cho match request
+     */
+    private Team createQuickTeam(User captain, BookingRequest request) {
+        Team team = Team.builder()
+                .name(request.getQuickTeamName())
+                .captain(captain)
+                .skillLevel(request.getQuickTeamSkillLevel() != null ? request.getQuickTeamSkillLevel()
+                        : SkillLevel.INTERMEDIATE)
+                .memberCount(1)
+                .isActive(true)
+                .build();
+
+        return teamRepository.save(team);
+    }
+
+    /**
+     * Tạo team tạm thời cho người chơi không có đội
+     */
+    private Team createTemporaryTeam(User user, String hostName) {
+        String teamName = hostName + " #" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        Team team = Team.builder()
+                .name(teamName)
+                .captain(user)
+                .skillLevel(SkillLevel.ANY)
+                .memberCount(1)
+                .isActive(true)
+                .description("Đội tạm thời cho trận ráp kèo")
+                .build();
+
+        return teamRepository.save(team);
+    }
+
+    private String generateMatchCode() {
+        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String uuid = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return String.format("M%s%s", dateStr, uuid);
     }
 }
