@@ -26,6 +26,11 @@ public class BookingRequest {
 
     private String note;
 
+    // ========== Guest Booking Fields (cho khách chưa đăng nhập) ==========
+    private String guestName; // Tên khách (bắt buộc khi đặt sân khách)
+    private String guestPhone; // SĐT khách (bắt buộc khi đặt sân khách)
+    private String guestEmail; // Email khách (optional)
+
     private Boolean isMatchRequest = false;
 
     // ========== Match Request Fields (chỉ dùng khi isMatchRequest = true)

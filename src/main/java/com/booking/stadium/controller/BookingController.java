@@ -42,6 +42,15 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success(bookingService.getAvailableSlots(fieldId, date)));
     }
 
+    @PostMapping("/bookings/guest")
+    @Operation(summary = "Đặt sân cho khách (không cần đăng nhập)")
+    public ResponseEntity<ApiResponse<BookingResponse>> createGuestBooking(
+            @Valid @RequestBody BookingRequest request) {
+        BookingResponse response = bookingService.createGuestBooking(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Đặt sân thành công (Khách)", response));
+    }
+
     // ========== CUSTOMER ==========
 
     @PostMapping("/bookings")

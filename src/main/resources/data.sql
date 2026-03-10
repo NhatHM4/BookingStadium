@@ -4,6 +4,18 @@
 -- Sử dụng INSERT IGNORE để tránh lỗi duplicate khi chạy lại
 -- ============================================================
 
+-- ========================
+-- MIGRATION: Cho phép guest booking (customer_id nullable)
+-- ========================
+SET @col_nullable = (SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings' AND COLUMN_NAME = 'customer_id');
+SET @alter_sql = IF(@col_nullable = 'NO',
+    'ALTER TABLE bookings MODIFY COLUMN customer_id BIGINT NULL',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 SET NAMES utf8mb4;
 SET CHARACTER SET utf8mb4;
 

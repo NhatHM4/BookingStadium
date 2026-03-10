@@ -23,6 +23,10 @@ public class BookingResponse {
     private String bookingCode;
     private Long customerId;
     private String customerName;
+    private Boolean isGuestBooking;
+    private String guestName;
+    private String guestPhone;
+    private String guestEmail;
     private Long fieldId;
     private String fieldName;
     private Long stadiumId;
@@ -44,11 +48,17 @@ public class BookingResponse {
     private LocalDateTime createdAt;
 
     public static BookingResponse fromEntity(Booking booking) {
+        boolean isGuest = booking.getCustomer() == null;
+
         return BookingResponse.builder()
                 .id(booking.getId())
                 .bookingCode(booking.getBookingCode())
-                .customerId(booking.getCustomer().getId())
-                .customerName(booking.getCustomer().getFullName())
+                .customerId(isGuest ? null : booking.getCustomer().getId())
+                .customerName(isGuest ? booking.getGuestName() : booking.getCustomer().getFullName())
+                .isGuestBooking(isGuest)
+                .guestName(booking.getGuestName())
+                .guestPhone(booking.getGuestPhone())
+                .guestEmail(booking.getGuestEmail())
                 .fieldId(booking.getField().getId())
                 .fieldName(booking.getField().getName())
                 .stadiumId(booking.getField().getStadium().getId())
@@ -66,7 +76,8 @@ public class BookingResponse {
                 .status(booking.getStatus())
                 .cancelledAt(booking.getCancelledAt())
                 .cancelReason(booking.getCancelReason())
-                .recurringBookingId(booking.getRecurringBooking() != null ? booking.getRecurringBooking().getId() : null)
+                .recurringBookingId(
+                        booking.getRecurringBooking() != null ? booking.getRecurringBooking().getId() : null)
                 .createdAt(booking.getCreatedAt())
                 .build();
     }

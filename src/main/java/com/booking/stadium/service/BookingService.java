@@ -96,6 +96,44 @@ public class BookingService {
     public BookingResponse createBooking(BookingRequest request) {
         User customer = getCurrentUser();
 
+        Booking booking = processBooking(request, customer, null, null, null);
+
+        // Tự động tạo match request nếu isMatchRequest = true
+        if (Boolean.TRUE.equals(request.getIsMatchRequest())) {
+            createMatchRequestForBooking(booking, request, customer);
+        }
+
+        return BookingResponse.fromEntity(booking);
+    }
+
+    // ========== GUEST (Khách không cần đăng nhập) ==========
+
+    @Transactional
+    public BookingResponse createGuestBooking(BookingRequest request) {
+        if (request.getGuestName() == null || request.getGuestName().trim().isEmpty()) {
+            throw new BadRequestException("Tên khách là bắt buộc khi đặt sân không đăng nhập");
+        }
+        if (request.getGuestPhone() == null || request.getGuestPhone().trim().isEmpty()) {
+            throw new BadRequestException("Số điện thoại là bắt buộc khi đặt sân không đăng nhập");
+        }
+
+        // Khách không được tạo match request
+        if (Boolean.TRUE.equals(request.getIsMatchRequest())) {
+            throw new BadRequestException(
+                    "Khách không đăng nhập không thể tạo trận ráp kèo. Vui lòng đăng nhập để sử dụng tính năng này");
+        }
+
+        Booking booking = processBooking(request, null, request.getGuestName(), request.getGuestPhone(),
+                request.getGuestEmail());
+
+        return BookingResponse.fromEntity(booking);
+    }
+
+    /**
+     * Xử lý logic đặt sân chung cho cả user đăng nhập và khách
+     */
+    private Booking processBooking(BookingRequest request, User customer, String guestName, String guestPhone,
+            String guestEmail) {
         Field field = fieldRepository.findById(request.getFieldId())
                 .orElseThrow(() -> new ResourceNotFoundException("Field", "id", request.getFieldId()));
 
@@ -144,16 +182,19 @@ public class BookingService {
             depositStatus = DepositStatus.PENDING;
         }
 
-        // Generate booking code: BK + yyyyMMdd + 3 digits
+        // Generate booking code
         String bookingCode = generateBookingCode();
 
         Booking booking = Booking.builder()
                 .bookingCode(bookingCode)
                 .customer(customer)
+                .guestName(guestName)
+                .guestPhone(guestPhone)
+                .guestEmail(guestEmail)
                 .field(field)
                 .timeSlot(timeSlot)
                 .bookingDate(request.getBookingDate())
-                .isMatchRequest(request.getIsMatchRequest() != null ? request.getIsMatchRequest() : false)
+                .isMatchRequest(customer != null && Boolean.TRUE.equals(request.getIsMatchRequest()))
                 .totalPrice(totalPrice)
                 .depositAmount(depositAmount)
                 .remainingAmount(remainingAmount)
@@ -162,14 +203,7 @@ public class BookingService {
                 .status(BookingStatus.PENDING)
                 .build();
 
-        booking = bookingRepository.save(booking);
-
-        // Tự động tạo match request nếu isMatchRequest = true
-        if (Boolean.TRUE.equals(request.getIsMatchRequest())) {
-            createMatchRequestForBooking(booking, request, customer);
-        }
-
-        return BookingResponse.fromEntity(booking);
+        return bookingRepository.save(booking);
     }
 
     @Transactional(readOnly = true)

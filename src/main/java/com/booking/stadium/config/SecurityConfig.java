@@ -55,8 +55,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
+                                "/swagger-ui.html")
+                        .permitAll()
                         // Static resources (uploaded images)
                         .requestMatchers("/uploads/**").permitAll()
                         // Public GET endpoints
@@ -70,15 +70,18 @@ public class SecurityConfig {
                                 "/api/v1/stadiums/{stadiumId}/deposit-policy",
                                 "/api/v1/stadiums/{stadiumId}/reviews",
                                 "/api/v1/match-requests",
-                                "/api/v1/match-requests/{id}"
-                        ).permitAll()
+                                "/api/v1/match-requests/{id}")
+                        .permitAll()
+                        // Public POST endpoints (guest booking)
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/v1/bookings/guest")
+                        .permitAll()
                         // Admin endpoints
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Owner endpoints
                         .requestMatchers("/api/v1/owner/**").hasAnyRole("OWNER", "ADMIN")
                         // All other endpoints require authentication
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

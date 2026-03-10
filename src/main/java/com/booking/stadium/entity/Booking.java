@@ -15,7 +15,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "bookings", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"field_id", "time_slot_id", "booking_date"})
+        @UniqueConstraint(columnNames = { "field_id", "time_slot_id", "booking_date" })
 })
 @Getter
 @Setter
@@ -32,8 +32,18 @@ public class Booking {
     private String bookingCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @JoinColumn(name = "customer_id")
     private User customer;
+
+    // Guest booking fields (khi khách đặt sân không cần đăng nhập)
+    @Column(name = "guest_name", length = 100)
+    private String guestName;
+
+    @Column(name = "guest_phone", length = 20)
+    private String guestPhone;
+
+    @Column(name = "guest_email", length = 100)
+    private String guestEmail;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "field_id", nullable = false)

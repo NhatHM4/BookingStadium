@@ -59,3 +59,35 @@
    ### UPDATE:
    mình muốn update thêm thì khi booking sân bóng thì có tùy chọn cho người chưa đăng nhập (Khách). Update tài liệu nhé
 
+   ### ✅ OPTION 4: Đặt sân cho Khách (Guest Booking - Không cần đăng nhập)
+   
+   **Endpoint mới:** `POST /api/v1/bookings/guest` (Public - không cần Auth)
+   
+   **Cách hoạt động:**
+   - Khách chưa đăng nhập có thể đặt sân trực tiếp
+   - Chỉ cần cung cấp: `guestName` (bắt buộc), `guestPhone` (bắt buộc), `guestEmail` (optional)
+   - Khách **KHÔNG** thể tạo trận ráp kèo (`isMatchRequest` bị từ chối)
+   - Booking khách có `customerId = null`, `isGuestBooking = true`
+   
+   **Request mẫu:**
+   ```json
+   {
+     "fieldId": 1,
+     "timeSlotId": 1,
+     "bookingDate": "2025-03-15",
+     "guestName": "Trần Văn B",
+     "guestPhone": "0912345678",
+     "guestEmail": "guest@example.com",
+     "note": "Đặt sân cho buổi giao lưu"
+   }
+   ```
+   
+   **Files đã update:**
+   - `/src/main/java/com/booking/stadium/entity/Booking.java` — Thêm `guestName`, `guestPhone`, `guestEmail`, `customer` nullable
+   - `/src/main/java/com/booking/stadium/dto/booking/BookingRequest.java` — Thêm fields cho guest
+   - `/src/main/java/com/booking/stadium/dto/booking/BookingResponse.java` — Thêm `isGuestBooking`, `guestName`, `guestPhone`, `guestEmail`
+   - `/src/main/java/com/booking/stadium/service/BookingService.java` — Thêm `createGuestBooking()`, refactor `processBooking()` dùng chung
+   - `/src/main/java/com/booking/stadium/controller/BookingController.java` — Thêm endpoint `POST /bookings/guest`
+   - `/src/main/java/com/booking/stadium/config/SecurityConfig.java` — Cho phép POST `/bookings/guest` public
+   - `/docs/API_DOCUMENTATION.md` — Thêm Section 7.3
+
