@@ -51,6 +51,13 @@ public class BookingController {
                 .body(ApiResponse.success("Đặt sân thành công (Khách)", response));
     }
 
+    @GetMapping("/bookings/lookup")
+    @Operation(summary = "Tra cứu đơn đặt sân theo mã booking (không cần đăng nhập)")
+    public ResponseEntity<ApiResponse<BookingResponse>> lookupBooking(
+            @RequestParam String bookingCode) {
+        return ResponseEntity.ok(ApiResponse.success(bookingService.getBookingByCode(bookingCode)));
+    }
+
     // ========== CUSTOMER ==========
 
     @PostMapping("/bookings")

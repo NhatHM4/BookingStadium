@@ -70,7 +70,8 @@ public class SecurityConfig {
                                 "/api/v1/stadiums/{stadiumId}/deposit-policy",
                                 "/api/v1/stadiums/{stadiumId}/reviews",
                                 "/api/v1/match-requests",
-                                "/api/v1/match-requests/{id}")
+                                "/api/v1/match-requests/{id}",
+                                "/api/v1/bookings/lookup")
                         .permitAll()
                         // Public POST endpoints (guest booking)
                         .requestMatchers(org.springframework.http.HttpMethod.POST,

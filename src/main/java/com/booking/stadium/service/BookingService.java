@@ -90,6 +90,13 @@ public class BookingService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public BookingResponse getBookingByCode(String bookingCode) {
+        Booking booking = bookingRepository.findByBookingCode(bookingCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "bookingCode", bookingCode));
+        return BookingResponse.fromEntity(booking);
+    }
+
     // ========== CUSTOMER ==========
 
     @Transactional

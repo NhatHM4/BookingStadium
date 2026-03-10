@@ -91,3 +91,23 @@
    - `/src/main/java/com/booking/stadium/config/SecurityConfig.java` — Cho phép POST `/bookings/guest` public
    - `/docs/API_DOCUMENTATION.md` — Thêm Section 7.3
 
+
+
+### UPDATE 
+
+tạo thêm cho tôi một màn hình để search mã đặt sân: hiện thị thông tin đặt sân (vì book qua khách thì không có lịch sử)
+
+### ✅ Tra cứu đơn đặt sân theo mã booking
+
+**Endpoint mới:** `GET /api/v1/bookings/lookup?bookingCode=BK...` (Public - không cần Auth)
+
+**Cách hoạt động:**
+- Khách nhập mã booking code được cấp khi đặt sân
+- Hệ thống trả về đầy đủ thông tin: sân, giờ, ngày, giá, trạng thái...
+- Phù hợp cho khách (guest) không có tài khoản để xem lịch sử
+
+**Files đã update:**
+- `/src/main/java/com/booking/stadium/service/BookingService.java` — Thêm `getBookingByCode()`
+- `/src/main/java/com/booking/stadium/controller/BookingController.java` — Thêm endpoint `GET /bookings/lookup`
+- `/src/main/java/com/booking/stadium/config/SecurityConfig.java` — Cho phép GET `/bookings/lookup` public
+- `/docs/API_DOCUMENTATION.md` — Thêm Section 7.4

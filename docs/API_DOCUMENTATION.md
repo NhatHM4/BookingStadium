@@ -968,7 +968,66 @@ POST /api/v1/bookings/guest
 
 ---
 
-### 7.4 Lịch sử đặt sân của tôi
+### 7.4 Tra cứu đơn đặt sân theo mã (không cần đăng nhập)
+```
+GET /api/v1/bookings/lookup?bookingCode=BK20250315A1B2C3
+```
+**Auth:** Không yêu cầu (Public)
+
+**Mô tả:** Cho phép khách tra cứu thông tin đơn đặt sân bằng mã booking code. Phù hợp cho khách đặt sân không đăng nhập (guest) vì họ không có lịch sử đặt sân.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| bookingCode | String | ✅ | Mã đặt sân (VD: BK20250315A1B2C3) |
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "bookingCode": "BK20250315A1B2C3",
+    "customerId": null,
+    "customerName": "Trần Văn B",
+    "isGuestBooking": true,
+    "guestName": "Trần Văn B",
+    "guestPhone": "0912345678",
+    "guestEmail": "guest@example.com",
+    "fieldId": 1,
+    "fieldName": "Sân 1",
+    "stadiumId": 1,
+    "stadiumName": "Sân bóng ABC",
+    "timeSlotId": 1,
+    "startTime": "06:00",
+    "endTime": "07:30",
+    "bookingDate": "2025-03-15",
+    "isMatchRequest": false,
+    "totalPrice": 350000,
+    "depositAmount": 105000,
+    "remainingAmount": 245000,
+    "depositStatus": "PENDING",
+    "note": "Đặt sân cho buổi giao lưu",
+    "status": "PENDING",
+    "cancelledAt": null,
+    "cancelReason": null,
+    "recurringBookingId": null,
+    "createdAt": "2025-03-10T10:30:00"
+  }
+}
+```
+
+**Error Response:** `404 Not Found`
+```json
+{
+  "success": false,
+  "message": "Booking not found with bookingCode: BK20250315XXXXXX"
+}
+```
+
+---
+
+### 7.5 Lịch sử đặt sân của tôi
 ```
 GET /api/v1/bookings/my
 ```
@@ -985,7 +1044,7 @@ GET /api/v1/bookings/my
 
 ---
 
-### 7.5 Chi tiết đơn đặt
+### 7.6 Chi tiết đơn đặt
 ```
 GET /api/v1/bookings/{id}
 ```
@@ -995,7 +1054,7 @@ GET /api/v1/bookings/{id}
 
 ---
 
-### 7.6 Hủy đặt sân
+### 7.7 Hủy đặt sân
 ```
 PUT /api/v1/bookings/{id}/cancel
 ```
@@ -1007,7 +1066,7 @@ PUT /api/v1/bookings/{id}/cancel
 
 ---
 
-### 7.7 DS đơn đặt (Owner)
+### 7.8 DS đơn đặt (Owner)
 ```
 GET /api/v1/owner/bookings
 ```
@@ -1019,7 +1078,7 @@ GET /api/v1/owner/bookings
 
 ---
 
-### 7.8 Xác nhận đơn đặt
+### 7.9 Xác nhận đơn đặt
 ```
 PUT /api/v1/owner/bookings/{id}/confirm
 ```
@@ -1029,7 +1088,7 @@ PUT /api/v1/owner/bookings/{id}/confirm
 
 ---
 
-### 7.9 Từ chối đơn đặt
+### 7.10 Từ chối đơn đặt
 ```
 PUT /api/v1/owner/bookings/{id}/reject
 ```
@@ -1039,7 +1098,7 @@ PUT /api/v1/owner/bookings/{id}/reject
 
 ---
 
-### 7.10 Hoàn thành đơn đặt
+### 7.11 Hoàn thành đơn đặt
 ```
 PUT /api/v1/owner/bookings/{id}/complete
 ```
@@ -1049,7 +1108,7 @@ PUT /api/v1/owner/bookings/{id}/complete
 
 ---
 
-### 7.11 DS đơn theo sân + ngày (Owner)
+### 7.12 DS đơn theo sân + ngày (Owner)
 ```
 GET /api/v1/owner/stadiums/{stadiumId}/bookings?date=2025-03-15
 ```
