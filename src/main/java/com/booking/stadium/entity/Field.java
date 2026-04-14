@@ -31,6 +31,9 @@ public class Field {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "field_type", nullable = false)
     private FieldType fieldType;

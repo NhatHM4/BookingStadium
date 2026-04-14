@@ -624,6 +624,7 @@ POST /api/v1/stadiums/{stadiumId}/fields
   "name": "Sân A1 - 5 người",         // required
   "fieldType": "FIVE_A_SIDE",         // required: FIVE_A_SIDE | SEVEN_A_SIDE | ELEVEN_A_SIDE
   "defaultPrice": 250000,             // required, > 0
+  "imageUrl": "stadiums/1/field-a1.jpg", // optional (path từ API upload)
   "parentFieldId": 3                  // ⭐ MỚI: optional, ID sân cha (nếu sân này là sân con)
 }
 ```
@@ -648,6 +649,7 @@ PUT /api/v1/fields/{id}
   "name": "Sân A1 - 5 người",
   "fieldType": "FIVE_A_SIDE",
   "defaultPrice": 250000,
+  "imageUrl": "stadiums/1/field-a1-v2.jpg", // optional
   "parentFieldId": 3                  // ⭐ MỚI: có thể update parent relationship
 }
 ```
@@ -2087,7 +2089,7 @@ GET /api/v1/health
 | **SocialLoginRequest** | `POST /auth/social-login` | `email`\*, `fullName`\*, `avatarUrl`, `phone` |
 | **RefreshTokenRequest** | `POST /auth/refresh-token`, `POST /auth/logout` | `refreshToken`\* |
 | **StadiumRequest** | `POST /stadiums`, `PUT /stadiums/{id}` | `name`\*, `address`\*, `district`, `city`, `description`, `imageUrl`, `latitude`, `longitude`, `openTime`, `closeTime` |
-| **FieldRequest** | `POST /stadiums/{id}/fields`, `PUT /fields/{id}` | `name`\*, `fieldType`\* (FieldType), `defaultPrice`\* (>0), `parentFieldId` ⭐ |
+| **FieldRequest** | `POST /stadiums/{id}/fields`, `PUT /fields/{id}` | `name`\*, `fieldType`\* (FieldType), `defaultPrice`\* (>0), `imageUrl`, `parentFieldId` ⭐ |
 | **TimeSlotRequest** | `POST /fields/{id}/time-slots`, `PUT /time-slots/{id}` | `startTime`\* (HH:mm), `endTime`\* (HH:mm), `price`\* (>0) |
 | **BookingRequest** | `POST /bookings` | `fieldId`\*, `timeSlotId`\*, `bookingDate`\* (yyyy-MM-dd), `note`, `isMatchRequest` (default: false) |
 | **DepositRequest** | `POST /bookings/{id}/deposits` | `paymentMethod`\* (PaymentMethod), `transactionCode`, `note` |
@@ -2109,7 +2111,7 @@ GET /api/v1/health
 | **UserResponse** | `id`, `email`, `fullName`, `phone`, `avatarUrl`, `role`, `authProvider` (LOCAL/SOCIAL), `isActive` |
 | **JwtResponse** | `accessToken`, `refreshToken`, `tokenType` ("Bearer"), `user` (UserResponse) |
 | **StadiumResponse** | `id`, `ownerId`, `ownerName`, `name`, `address`, `district`, `city`, `description`, `imageUrl`, `latitude`, `longitude`, `openTime`, `closeTime`, `status`, `avgRating`, `reviewCount`, `fieldCount` |
-| **FieldResponse** | `id`, `stadiumId`, `stadiumName`, `name`, `fieldType`, `defaultPrice`, `isActive`, `parentFieldId` ⭐, `childFieldCount` ⭐ |
+| **FieldResponse** | `id`, `stadiumId`, `stadiumName`, `name`, `imageUrl`, `fieldType`, `defaultPrice`, `isActive`, `parentFieldId` ⭐, `childFieldCount` ⭐ |
 | **TimeSlotResponse** | `id`, `fieldId`, `fieldName`, `startTime`, `endTime`, `price`, `isActive` |
 | **AvailableSlotResponse** | `timeSlotId`, `startTime`, `endTime`, `price`, `isAvailable` (⭐ tự động check grouped fields) |
 | **BookingResponse** | `id`, `bookingCode`, `customerId`, `customerName`, `fieldId`, `fieldName`, `stadiumId`, `stadiumName`, `timeSlotId`, `startTime`, `endTime`, `bookingDate`, `isMatchRequest`, `totalPrice`, `depositAmount`, `remainingAmount`, `depositStatus`, `note`, `status`, `cancelledAt`, `cancelReason`, `recurringBookingId`, `createdAt` |

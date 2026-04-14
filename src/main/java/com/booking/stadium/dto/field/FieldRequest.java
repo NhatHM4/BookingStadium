@@ -25,5 +25,7 @@ public class FieldRequest {
     @Positive(message = "Giá phải lớn hơn 0")
     private BigDecimal defaultPrice;
 
+    private String imageUrl;
+
     private Long parentFieldId;  // ID của sân cha (nếu là sân con trong nhóm)
 }

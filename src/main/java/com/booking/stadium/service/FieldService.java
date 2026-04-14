@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class FieldService {
@@ -22,13 +23,16 @@ public class FieldService {
     private final FieldRepository fieldRepository;
     private final StadiumRepository stadiumRepository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     public FieldService(FieldRepository fieldRepository,
                         StadiumRepository stadiumRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        FileStorageService fileStorageService) {
         this.fieldRepository = fieldRepository;
         this.stadiumRepository = stadiumRepository;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     // ========== PUBLIC ==========
@@ -48,6 +52,7 @@ public class FieldService {
         Field.FieldBuilder builder = Field.builder()
                 .stadium(stadium)
                 .name(request.getName())
+                .imageUrl(request.getImageUrl())
                 .fieldType(request.getFieldType())
                 .defaultPrice(request.getDefaultPrice())
                 .isActive(true);
@@ -65,6 +70,13 @@ public class FieldService {
 
         Field field = builder.build();
         field = fieldRepository.save(field);
+
+        if (field.getImageUrl() != null && field.getImageUrl().startsWith("stadiums/temp/")) {
+            String newImagePath = fileStorageService.moveFromTempToStadium(field.getImageUrl(), stadiumId);
+            field.setImageUrl(newImagePath);
+            field = fieldRepository.save(field);
+        }
+
         return FieldResponse.fromEntity(field);
     }
 
@@ -74,7 +86,13 @@ public class FieldService {
                 .orElseThrow(() -> new ResourceNotFoundException("Field", "id", id));
         verifyOwnership(field.getStadium());
 
+        String oldImageUrl = field.getImageUrl();
+        if (!Objects.equals(request.getImageUrl(), oldImageUrl)) {
+            fileStorageService.deleteFile(oldImageUrl);
+        }
+
         field.setName(request.getName());
+        field.setImageUrl(request.getImageUrl());
         field.setFieldType(request.getFieldType());
         field.setDefaultPrice(request.getDefaultPrice());
 
@@ -88,6 +106,12 @@ public class FieldService {
             field.setParentField(parentField);
         } else {
             field.setParentField(null);
+        }
+
+        if (field.getImageUrl() != null && field.getImageUrl().startsWith("stadiums/temp/")) {
+            String newImagePath = fileStorageService.moveFromTempToStadium(
+                    field.getImageUrl(), field.getStadium().getId());
+            field.setImageUrl(newImagePath);
         }
 
         field = fieldRepository.save(field);

@@ -19,6 +19,7 @@ public class FieldResponse {
     private Long stadiumId;
     private String stadiumName;
     private String name;
+    private String imageUrl;
     private FieldType fieldType;
     private BigDecimal defaultPrice;
     private Boolean isActive;
@@ -31,6 +32,7 @@ public class FieldResponse {
                 .stadiumId(field.getStadium().getId())
                 .stadiumName(field.getStadium().getName())
                 .name(field.getName())
+                .imageUrl(field.getImageUrl())
                 .fieldType(field.getFieldType())
                 .defaultPrice(field.getDefaultPrice())
                 .isActive(field.getIsActive())
