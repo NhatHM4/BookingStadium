@@ -17,8 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class MatchRequestService {
@@ -224,10 +226,24 @@ public class MatchRequestService {
         User user = getCurrentUser();
         List<Team> myTeams = teamRepository.findTeamsByMemberId(user.getId());
 
-        return myTeams.stream()
+        List<MatchRequestResponse> teamResponses = myTeams.stream()
                 .flatMap(t -> matchResponseRepository.findByTeamId(t.getId()).stream())
                 .map(resp -> MatchRequestResponse.fromEntity(resp.getMatchRequest()))
-                .distinct()
+                .toList();
+
+        List<MatchRequestResponse> individualResponses = matchResponseRepository.findByResponderUserId(user.getId())
+                .stream()
+                .map(resp -> MatchRequestResponse.fromEntity(resp.getMatchRequest()))
+                .toList();
+
+        return Stream.concat(teamResponses.stream(), individualResponses.stream())
+                .collect(java.util.stream.Collectors.toMap(
+                        MatchRequestResponse::getId,
+                        r -> r,
+                        (a, b) -> a,
+                        LinkedHashMap::new))
+                .values()
+                .stream()
                 .toList();
     }
 
@@ -252,34 +268,77 @@ public class MatchRequestService {
             throw new BadRequestException("Kèo đã hết hạn");
         }
 
-        Team team = teamRepository.findById(request.getTeamId())
-                .orElseThrow(() -> new ResourceNotFoundException("Team", "id", request.getTeamId()));
+        MatchJoinType joinType = request.getJoinType() != null ? request.getJoinType()
+                : (request.getTeamId() != null ? MatchJoinType.TEAM : MatchJoinType.INDIVIDUAL);
 
-        // Phải là captain của team
-        if (!team.getCaptain().getId().equals(user.getId())) {
-            throw new UnauthorizedException("Bạn phải là đội trưởng để nhận kèo");
+        MatchResponse response;
+        if (joinType == MatchJoinType.TEAM) {
+            if (request.getTeamId() == null) {
+                throw new BadRequestException("Thiếu teamId khi nhận kèo theo đội");
+            }
+
+            Team team = teamRepository.findById(request.getTeamId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Team", "id", request.getTeamId()));
+
+            // Phải là captain của team
+            if (!team.getCaptain().getId().equals(user.getId())) {
+                throw new UnauthorizedException("Bạn phải là đội trưởng để nhận kèo");
+            }
+
+            if (!team.getIsActive()) {
+                throw new BadRequestException("Đội đã bị giải tán");
+            }
+
+            // Không thể nhận kèo của chính mình
+            if (team.getId().equals(matchRequest.getHostTeam().getId())) {
+                throw new BadRequestException("Không thể nhận kèo của chính đội mình");
+            }
+
+            // Kiểm tra đã gửi response chưa
+            if (matchResponseRepository.existsByMatchRequestIdAndTeamId(matchRequestId, team.getId())) {
+                throw new BadRequestException("Đội đã gửi yêu cầu nhận kèo này rồi");
+            }
+
+            String contactPhone = request.getContactPhone();
+            if (contactPhone == null || contactPhone.isBlank()) {
+                contactPhone = team.getPhone() != null ? team.getPhone() : user.getPhone();
+            }
+
+            response = MatchResponse.builder()
+                    .matchRequest(matchRequest)
+                    .team(team)
+                    .responderUser(user)
+                    .joinType(MatchJoinType.TEAM)
+                    .contactPhone(contactPhone)
+                    .message(request.getMessage())
+                    .respondedAt(LocalDateTime.now())
+                    .build();
+        } else {
+            if (user.getId().equals(matchRequest.getHostTeam().getCaptain().getId())) {
+                throw new BadRequestException("Không thể nhận kèo do chính mình tạo");
+            }
+
+            if (matchResponseRepository.existsByMatchRequestIdAndResponderUserId(matchRequestId, user.getId())) {
+                throw new BadRequestException("Bạn đã gửi yêu cầu nhận kèo này rồi");
+            }
+
+            String contactPhone = request.getContactPhone();
+            if (contactPhone == null || contactPhone.isBlank()) {
+                contactPhone = user.getPhone();
+            }
+            if (contactPhone == null || contactPhone.isBlank()) {
+                throw new BadRequestException("Vui lòng cung cấp số điện thoại liên hệ");
+            }
+
+            response = MatchResponse.builder()
+                    .matchRequest(matchRequest)
+                    .responderUser(user)
+                    .joinType(MatchJoinType.INDIVIDUAL)
+                    .contactPhone(contactPhone)
+                    .message(request.getMessage())
+                    .respondedAt(LocalDateTime.now())
+                    .build();
         }
-
-        if (!team.getIsActive()) {
-            throw new BadRequestException("Đội đã bị giải tán");
-        }
-
-        // Không thể nhận kèo của chính mình
-        if (team.getId().equals(matchRequest.getHostTeam().getId())) {
-            throw new BadRequestException("Không thể nhận kèo của chính đội mình");
-        }
-
-        // Kiểm tra đã gửi response chưa
-        if (matchResponseRepository.existsByMatchRequestIdAndTeamId(matchRequestId, team.getId())) {
-            throw new BadRequestException("Đội đã gửi yêu cầu nhận kèo này rồi");
-        }
-
-        MatchResponse response = MatchResponse.builder()
-                .matchRequest(matchRequest)
-                .team(team)
-                .message(request.getMessage())
-                .respondedAt(LocalDateTime.now())
-                .build();
 
         response = matchResponseRepository.save(response);
         return MatchResponseResponse.fromEntity(response);
@@ -389,8 +448,14 @@ public class MatchRequestService {
             throw new BadRequestException("Response không thuộc kèo này");
         }
 
-        if (!response.getTeam().getCaptain().getId().equals(user.getId())) {
-            throw new UnauthorizedException("Chỉ đội trưởng mới có thể rút kèo");
+        if (response.getJoinType() == MatchJoinType.TEAM) {
+            if (response.getTeam() == null || !response.getTeam().getCaptain().getId().equals(user.getId())) {
+                throw new UnauthorizedException("Chỉ đội trưởng mới có thể rút kèo");
+            }
+        } else {
+            if (response.getResponderUser() == null || !response.getResponderUser().getId().equals(user.getId())) {
+                throw new UnauthorizedException("Chỉ người gửi yêu cầu mới có thể rút kèo");
+            }
         }
 
         if (response.getStatus() != MatchResponseStatus.PENDING) {

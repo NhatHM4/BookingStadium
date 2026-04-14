@@ -1,6 +1,7 @@
 package com.booking.stadium.entity;
 
 import com.booking.stadium.enums.MatchResponseStatus;
+import com.booking.stadium.enums.MatchJoinType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -27,8 +28,20 @@ public class MatchResponse {
     private MatchRequest matchRequest;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
+    @JoinColumn(name = "team_id")
     private Team team;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "responder_user_id")
+    private User responderUser;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "join_type", nullable = false, length = 20)
+    @Builder.Default
+    private MatchJoinType joinType = MatchJoinType.TEAM;
+
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone;
 
     @Column(columnDefinition = "TEXT")
     private String message;

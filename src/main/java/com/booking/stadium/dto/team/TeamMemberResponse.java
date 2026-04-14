@@ -19,6 +19,8 @@ public class TeamMemberResponse {
     private Long id;
     private Long teamId;
     private String teamName;
+    private String name;
+    private String phone;
     private Long userId;
     private String userName;
     private String userEmail;
@@ -32,9 +34,11 @@ public class TeamMemberResponse {
                 .id(tm.getId())
                 .teamId(tm.getTeam().getId())
                 .teamName(tm.getTeam().getName())
-                .userId(tm.getUser().getId())
-                .userName(tm.getUser().getFullName())
-                .userEmail(tm.getUser().getEmail())
+                .name(tm.getName() != null ? tm.getName() : (tm.getUser() != null ? tm.getUser().getFullName() : null))
+                .phone(tm.getPhone() != null ? tm.getPhone() : (tm.getUser() != null ? tm.getUser().getPhone() : null))
+                .userId(tm.getUser() != null ? tm.getUser().getId() : null)
+                .userName(tm.getUser() != null ? tm.getUser().getFullName() : null)
+                .userEmail(tm.getUser() != null ? tm.getUser().getEmail() : null)
                 .role(tm.getRole())
                 .status(tm.getStatus())
                 .joinedAt(tm.getJoinedAt())

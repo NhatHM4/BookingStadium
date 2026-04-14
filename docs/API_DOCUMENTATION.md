@@ -1411,6 +1411,7 @@ POST /api/v1/teams
 ```json
 {
   "name": "FC Thunder",                // required, max 100 ký tự
+  "phone": "0901234567",               // required, max 20 ký tự
   "logoUrl": "https://...",            // optional
   "description": "Đội bóng vui vẻ",    // optional
   "preferredFieldType": "FIVE_A_SIDE", // optional: FIVE_A_SIDE | SEVEN_A_SIDE | ELEVEN_A_SIDE
@@ -1428,6 +1429,7 @@ POST /api/v1/teams
   "data": {
     "id": 1,
     "name": "FC Thunder",
+    "phone": "0901234567",
     "logoUrl": "https://...",
     "description": "Đội bóng vui vẻ",
     "preferredFieldType": "FIVE_A_SIDE",
@@ -1444,6 +1446,8 @@ POST /api/v1/teams
         "id": 1,
         "teamId": 1,
         "teamName": "FC Thunder",
+        "name": "Nguyễn Văn A",
+        "phone": "0901234567",
         "userId": 1,
         "userName": "Nguyễn Văn A",
         "userEmail": "user@example.com",
@@ -1501,7 +1505,7 @@ DELETE /api/v1/teams/{id}
 
 ---
 
-### 10.6 Thêm thành viên (mời qua email)
+### 10.6 Thêm thành viên
 ```
 POST /api/v1/teams/{id}/members
 ```
@@ -1510,17 +1514,18 @@ POST /api/v1/teams/{id}/members
 **Request Body:**
 ```json
 {
-  "email": "member@example.com"        // required, @Email
+  "name": "Nguyễn Văn B",              // required, max 100
+  "phone": "0908889999"                // optional, max 20
 }
 ```
 
-**Response:** `201 Created` — `TeamMemberResponse` (status: `PENDING`)
+**Response:** `201 Created` — `TeamMemberResponse` (status: `ACTIVE`)
 
 ---
 
 ### 10.7 Xóa thành viên
 ```
-PUT /api/v1/teams/{id}/members/{userId}/remove
+PUT /api/v1/teams/{id}/members/{memberId}/remove
 ```
 **Auth:** Authenticated (chỉ Captain)
 
@@ -1530,7 +1535,7 @@ PUT /api/v1/teams/{id}/members/{userId}/remove
 
 ### 10.8 Chuyển quyền đội trưởng
 ```
-PUT /api/v1/teams/{id}/members/{userId}/captain
+PUT /api/v1/teams/{id}/members/{memberId}/captain
 ```
 **Auth:** Authenticated (chỉ Captain hiện tại)
 
@@ -1706,7 +1711,9 @@ POST /api/v1/match-requests/{id}/responses
 **Request Body:**
 ```json
 {
-  "teamId": 2,                        // optional (ID đội nhận kèo)
+  "joinType": "TEAM",                 // optional: TEAM | INDIVIDUAL (default: TEAM nếu có teamId, ngược lại INDIVIDUAL)
+  "teamId": 2,                        // required khi joinType=TEAM
+  "contactPhone": "0901234567",       // optional; với INDIVIDUAL nếu bỏ trống sẽ lấy từ user.phone
   "message": "Đội chúng tôi muốn nhận kèo" // optional
 }
 ```
@@ -1722,6 +1729,10 @@ POST /api/v1/match-requests/{id}/responses
     "teamId": 2,
     "teamName": "FC Storm",
     "teamLogoUrl": "https://...",
+    "responderUserId": 5,
+    "responderUserName": "Nguyễn Văn B",
+    "joinType": "TEAM",
+    "contactPhone": "0901234567",
     "message": "Đội chúng tôi muốn nhận kèo",
     "status": "PENDING",
     "respondedAt": "2025-03-10T11:00:00",
@@ -1758,7 +1769,7 @@ PUT /api/v1/match-requests/{id}/responses/{responseId}/reject
 ```
 PUT /api/v1/match-requests/{id}/responses/{responseId}/withdraw
 ```
-**Auth:** Authenticated (chỉ captain đội đã gửi)
+**Auth:** Authenticated (chỉ captain nếu nhận theo TEAM, hoặc chính user gửi nếu nhận theo INDIVIDUAL)
 
 **Response:** `200 OK` — `MatchResponseResponse` (status: `WITHDRAWN`)
 
@@ -2096,10 +2107,10 @@ GET /api/v1/health
 | **RefundRequest** | `POST /owner/bookings/{id}/refund` | `paymentMethod` (PaymentMethod), `note` |
 | **DepositPolicyRequest** | `PUT /stadiums/{id}/deposit-policy` | `depositPercent`\* (0-100), `refundBeforeHours` (default 24), `refundPercent` (0-100), `lateCancelRefundPercent` (0-100), `recurringDiscountPercent` (0-100), `minRecurringSessions` (default 4), `isDepositRequired` (default true) |
 | **RecurringBookingRequest** | `POST /recurring-bookings` | `fieldId`\*, `timeSlotId`\*, `recurrenceType`\* (RecurrenceType), `startDate`\* (yyyy-MM-dd), `endDate`\* (yyyy-MM-dd), `note` |
-| **TeamRequest** | `POST /teams`, `PUT /teams/{id}` | `name`\* (max 100), `logoUrl`, `description`, `preferredFieldType` (FieldType), `skillLevel` (SkillLevel), `city` (max 100), `district` (max 100) |
-| **AddMemberRequest** | `POST /teams/{id}/members` | `email`\* (@Email) |
+| **TeamRequest** | `POST /teams`, `PUT /teams/{id}` | `name`\* (max 100), `phone`\* (max 20), `logoUrl`, `description`, `preferredFieldType` (FieldType), `skillLevel` (SkillLevel), `city` (max 100), `district` (max 100) |
+| **AddMemberRequest** | `POST /teams/{id}/members` | `name`\* (max 100), `phone` (max 20) |
 | **MatchRequestRequest** | `POST /match-requests` | `bookingId`\*, `teamId`\*, `requiredSkillLevel` (SkillLevel), `costSharing` (CostSharing), `hostSharePercent`, `opponentSharePercent`, `message`, `contactPhone` |
-| **MatchResponseRequest** | `POST /match-requests/{id}/responses` | `teamId`, `message` |
+| **MatchResponseRequest** | `POST /match-requests/{id}/responses` | `joinType` (MatchJoinType: TEAM/INDIVIDUAL), `teamId` (required khi TEAM), `contactPhone` (required khi INDIVIDUAL nếu user.phone trống), `message` |
 | **ReviewRequest** | `POST /reviews` | `bookingId`\*, `rating`\* (1-5), `comment` |
 
 > \* = required field
@@ -2118,10 +2129,10 @@ GET /api/v1/health
 | **DepositResponse** | `id`, `bookingId`, `bookingCode`, `amount`, `depositType`, `paymentMethod`, `transactionCode`, `note`, `confirmedById`, `confirmedByName`, `confirmedAt`, `status`, `createdAt` |
 | **DepositPolicyResponse** | `id`, `stadiumId`, `stadiumName`, `depositPercent`, `refundBeforeHours`, `refundPercent`, `lateCancelRefundPercent`, `recurringDiscountPercent`, `minRecurringSessions`, `isDepositRequired` |
 | **RecurringBookingResponse** | `id`, `recurringCode`, `customerId`, `customerName`, `fieldId`, `fieldName`, `stadiumId`, `stadiumName`, `timeSlotId`, `timeSlotRange`, `recurrenceType`, `dayOfWeek`, `startDate`, `endDate`, `totalSessions`, `completedSessions`, `cancelledSessions`, `discountPercent`, `originalPricePerSession`, `discountedPricePerSession`, `totalPrice`, `totalDeposit`, `depositStatus`, `status`, `note`, `createdAt`, `bookings` (List\<BookingResponse\>) |
-| **TeamResponse** | `id`, `name`, `logoUrl`, `description`, `preferredFieldType`, `skillLevel`, `captainId`, `captainName`, `memberCount`, `city`, `district`, `isActive`, `createdAt`, `members` (List\<TeamMemberResponse\>) |
-| **TeamMemberResponse** | `id`, `teamId`, `teamName`, `userId`, `userName`, `userEmail`, `role`, `status`, `joinedAt`, `createdAt` |
+| **TeamResponse** | `id`, `name`, `phone`, `logoUrl`, `description`, `preferredFieldType`, `skillLevel`, `captainId`, `captainName`, `memberCount`, `city`, `district`, `isActive`, `createdAt`, `members` (List\<TeamMemberResponse\>) |
+| **TeamMemberResponse** | `id`, `teamId`, `teamName`, `name`, `phone`, `userId`, `userName`, `userEmail`, `role`, `status`, `joinedAt`, `createdAt` |
 | **MatchRequestResponse** | `id`, `matchCode`, `bookingId`, `bookingCode`, `bookingDate`, `startTime`, `endTime`, `stadiumId`, `stadiumName`, `stadiumAddress`, `fieldId`, `fieldName`, `hostTeamId`, `hostTeamName`, `hostTeamLogoUrl`, `opponentTeamId`, `opponentTeamName`, `opponentTeamLogoUrl`, `fieldType`, `requiredSkillLevel`, `costSharing`, `hostSharePercent`, `opponentSharePercent`, `totalPrice`, `opponentAmount`, `message`, `contactPhone`, `status`, `acceptedAt`, `expiredAt`, `createdAt`, `responseCount`, `responses` (List\<MatchResponseResponse\>) |
-| **MatchResponseResponse** | `id`, `matchRequestId`, `teamId`, `teamName`, `teamLogoUrl`, `message`, `status`, `respondedAt`, `createdAt` |
+| **MatchResponseResponse** | `id`, `matchRequestId`, `teamId`, `teamName`, `teamLogoUrl`, `responderUserId`, `responderUserName`, `joinType`, `contactPhone`, `message`, `status`, `respondedAt`, `createdAt` |
 | **ReviewResponse** | `id`, `bookingId`, `bookingCode`, `customerId`, `customerName`, `customerAvatarUrl`, `stadiumId`, `stadiumName`, `rating`, `comment`, `createdAt` |
 | **DashboardResponse** | `totalUsers`, `totalCustomers`, `totalOwners`, `totalStadiums`, `approvedStadiums`, `pendingStadiums`, `totalBookings`, `completedBookings`, `cancelledBookings`, `totalTeams`, `totalMatchRequests`, `totalReviews`, `averageRating`, `recentBookings` (Map\<String, Long\>) |
 | **ApiResponse\<T\>** | `success` (boolean), `message` (String), `data` (T) |

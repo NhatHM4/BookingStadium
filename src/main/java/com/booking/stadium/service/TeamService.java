@@ -49,6 +49,7 @@ public class TeamService {
 
         Team team = Team.builder()
                 .name(request.getName())
+                .phone(request.getPhone())
                 .logoUrl(request.getLogoUrl())
                 .description(request.getDescription())
                 .preferredFieldType(request.getPreferredFieldType())
@@ -64,6 +65,8 @@ public class TeamService {
         // Tạo team member cho đội trưởng
         TeamMember captainMember = TeamMember.builder()
                 .team(team)
+                .name(captain.getFullName())
+                .phone(captain.getPhone())
                 .user(captain)
                 .role(TeamMemberRole.CAPTAIN)
                 .status(TeamMemberStatus.ACTIVE)
@@ -107,6 +110,7 @@ public class TeamService {
         Team team = getTeamAsCaptain(teamId, captain);
 
         team.setName(request.getName());
+        team.setPhone(request.getPhone());
         if (request.getLogoUrl() != null) team.setLogoUrl(request.getLogoUrl());
         if (request.getDescription() != null) team.setDescription(request.getDescription());
         if (request.getPreferredFieldType() != null) team.setPreferredFieldType(request.getPreferredFieldType());
@@ -140,42 +144,27 @@ public class TeamService {
     // ========== TEAM MEMBER MANAGEMENT ==========
 
     /**
-     * Mời thành viên vào đội (qua email)
+     * Thêm thành viên vào đội (member không bắt buộc phải có user)
      */
     @Transactional
     public TeamMemberResponse addMember(Long teamId, AddMemberRequest request) {
         User captain = getCurrentUser();
         Team team = getTeamAsCaptain(teamId, captain);
 
-        User invitedUser = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", request.getEmail()));
-
-        if (invitedUser.getId().equals(captain.getId())) {
-            throw new BadRequestException("Không thể mời chính mình");
-        }
-
-        // Kiểm tra đã là thành viên chưa
-        var existingOpt = teamMemberRepository.findByTeamIdAndUserId(teamId, invitedUser.getId());
-        if (existingOpt.isPresent()) {
-            TeamMember existing = existingOpt.get();
-            if (existing.getStatus() == TeamMemberStatus.ACTIVE || existing.getStatus() == TeamMemberStatus.PENDING) {
-                throw new BadRequestException("Người dùng đã là thành viên hoặc đang chờ xác nhận");
-            }
-            // Re-invite previously LEFT/KICKED member
-            existing.setStatus(TeamMemberStatus.PENDING);
-            existing.setRole(TeamMemberRole.MEMBER);
-            existing = teamMemberRepository.save(existing);
-            return TeamMemberResponse.fromEntity(existing);
-        }
-
         TeamMember member = TeamMember.builder()
                 .team(team)
-                .user(invitedUser)
+                .name(request.getName())
+                .phone(request.getPhone())
                 .role(TeamMemberRole.MEMBER)
-                .status(TeamMemberStatus.PENDING)
+                .status(TeamMemberStatus.ACTIVE)
+                .joinedAt(LocalDateTime.now())
                 .build();
 
         member = teamMemberRepository.save(member);
+
+        team.setMemberCount(team.getMemberCount() + 1);
+        teamRepository.save(team);
+
         return TeamMemberResponse.fromEntity(member);
     }
 
@@ -189,7 +178,7 @@ public class TeamService {
         TeamMember member = teamMemberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException("TeamMember", "id", memberId));
 
-        if (!member.getUser().getId().equals(user.getId())) {
+        if (member.getUser() == null || !member.getUser().getId().equals(user.getId())) {
             throw new UnauthorizedException("Bạn không phải người được mời");
         }
 
@@ -219,7 +208,7 @@ public class TeamService {
         TeamMember member = teamMemberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException("TeamMember", "id", memberId));
 
-        if (!member.getUser().getId().equals(user.getId())) {
+        if (member.getUser() == null || !member.getUser().getId().equals(user.getId())) {
             throw new UnauthorizedException("Bạn không phải người được mời");
         }
 
@@ -237,19 +226,17 @@ public class TeamService {
      * Xóa thành viên khỏi đội - chỉ captain
      */
     @Transactional
-    public void removeMember(Long teamId, Long userId) {
+    public void removeMember(Long teamId, Long memberId) {
         User captain = getCurrentUser();
         Team team = getTeamAsCaptain(teamId, captain);
 
-        if (userId.equals(captain.getId())) {
-            throw new BadRequestException("Đội trưởng không thể xóa chính mình");
-        }
-
-        TeamMember member = teamMemberRepository.findByTeamIdAndUserId(teamId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("TeamMember", "teamId+userId", teamId + "," + userId));
+        TeamMember member = getTeamMember(teamId, memberId);
 
         if (member.getStatus() != TeamMemberStatus.ACTIVE) {
             throw new BadRequestException("Thành viên không ở trạng thái active");
+        }
+        if (member.getRole() == TeamMemberRole.CAPTAIN) {
+            throw new BadRequestException("Không thể xóa đội trưởng");
         }
 
         member.setStatus(TeamMemberStatus.KICKED);
@@ -263,15 +250,17 @@ public class TeamService {
      * Chuyển quyền đội trưởng
      */
     @Transactional
-    public TeamResponse transferCaptain(Long teamId, Long newCaptainUserId) {
+    public TeamResponse transferCaptain(Long teamId, Long newCaptainMemberId) {
         User currentCaptain = getCurrentUser();
         Team team = getTeamAsCaptain(teamId, currentCaptain);
 
-        TeamMember newCaptainMember = teamMemberRepository.findByTeamIdAndUserId(teamId, newCaptainUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("TeamMember", "userId", newCaptainUserId));
+        TeamMember newCaptainMember = getTeamMember(teamId, newCaptainMemberId);
 
         if (newCaptainMember.getStatus() != TeamMemberStatus.ACTIVE) {
             throw new BadRequestException("Thành viên phải ở trạng thái active");
+        }
+        if (newCaptainMember.getUser() == null) {
+            throw new BadRequestException("Không thể chuyển quyền đội trưởng cho member chưa liên kết tài khoản");
         }
 
         // Chuyển captain hiện tại thành member
@@ -335,6 +324,15 @@ public class TeamService {
         }
 
         return team;
+    }
+
+    private TeamMember getTeamMember(Long teamId, Long memberId) {
+        TeamMember member = teamMemberRepository.findById(memberId)
+                .orElseThrow(() -> new ResourceNotFoundException("TeamMember", "id", memberId));
+        if (!member.getTeam().getId().equals(teamId)) {
+            throw new BadRequestException("Thành viên không thuộc đội này");
+        }
+        return member;
     }
 
     private User getCurrentUser() {

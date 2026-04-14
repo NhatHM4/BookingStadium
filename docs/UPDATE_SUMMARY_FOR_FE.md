@@ -5,6 +5,97 @@
 
 ---
 
+## 🔄 Changelog 14/04/2026 (Team + Match Response)
+
+### 1) Team API thay đổi
+
+- `TeamRequest` bắt buộc có `phone`
+  - Áp dụng cho:
+    - `POST /api/v1/teams`
+    - `PUT /api/v1/teams/{id}`
+- `POST /api/v1/teams/{id}/members`
+  - Body đổi từ `email` sang:
+  ```json
+  {
+    "name": "Nguyen Van A",
+    "phone": "0901234567"
+  }
+  ```
+  - `phone` optional
+  - Member không bắt buộc phải là user
+- Endpoint quản lý member đổi path param:
+  - `PUT /api/v1/teams/{id}/members/{memberId}/remove`
+  - `PUT /api/v1/teams/{id}/members/{memberId}/captain`
+  - `memberId` = id bản ghi member, không phải `userId`
+
+### 2) Team response thay đổi
+
+- `TeamResponse` có thêm `phone`
+- `TeamMemberResponse` có thêm `name`, `phone`
+- Giữ `userId`, `userName`, `userEmail` để backward compatible (có thể `null`)
+
+```json
+{
+  "id": 1,
+  "teamId": 10,
+  "teamName": "FC Sao Vang",
+  "name": "Nguyen Van A",
+  "phone": "0901234567",
+  "userId": null,
+  "userName": null,
+  "userEmail": null,
+  "role": "MEMBER",
+  "status": "ACTIVE",
+  "joinedAt": null,
+  "createdAt": "..."
+}
+```
+
+### 3) Match response hỗ trợ nhận kèo cá nhân
+
+- Endpoint: `POST /api/v1/match-requests/{id}/responses`
+- Request mới:
+```json
+{
+  "joinType": "TEAM",
+  "teamId": 2,
+  "contactPhone": "0901234567",
+  "message": "Đội/cháu muốn nhận kèo"
+}
+```
+
+- Quy tắc:
+  - `joinType=TEAM`:
+    - bắt buộc `teamId`
+    - `contactPhone` optional (BE tự fallback team phone/user phone nếu trống)
+  - `joinType=INDIVIDUAL`:
+    - không cần `teamId`
+    - `contactPhone` optional nếu user đã có `phone`
+    - nếu user chưa có `phone` thì FE phải nhập `contactPhone`
+
+- Response có thêm:
+  - `joinType`
+  - `contactPhone`
+  - `responderUserId`
+  - `responderUserName`
+  - `teamId/teamName/teamLogoUrl` có thể `null` nếu cá nhân
+
+### 4) Checklist FE cần update
+
+- Form tạo/sửa đội:
+  - thêm field bắt buộc `phone`
+- Form thêm thành viên:
+  - đổi từ `email` -> `name` + `phone`
+- Action remove/captain member:
+  - dùng `memberId` thay vì `userId`
+- Form nhận kèo:
+  - thêm lựa chọn `TEAM` / `INDIVIDUAL`
+  - khi `INDIVIDUAL`: thêm option lấy `session.user.phone` hoặc nhập SĐT mới
+- Model dữ liệu response:
+  - update theo field mới của `TeamResponse`, `TeamMemberResponse`, `MatchResponseResponse`
+
+---
+
 ## 🎯 Tổng Quan Thay Đổi
 
 ### Tính năng mới: GROUPED FIELDS (Sân Ghép)

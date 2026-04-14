@@ -19,6 +19,7 @@ public class TeamResponse {
 
     private Long id;
     private String name;
+    private String phone;
     private String logoUrl;
     private String description;
     private FieldType preferredFieldType;
@@ -37,6 +38,7 @@ public class TeamResponse {
         return TeamResponse.builder()
                 .id(team.getId())
                 .name(team.getName())
+                .phone(team.getPhone())
                 .logoUrl(team.getLogoUrl())
                 .description(team.getDescription())
                 .preferredFieldType(team.getPreferredFieldType())

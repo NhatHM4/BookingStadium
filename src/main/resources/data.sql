@@ -16,6 +16,100 @@ PREPARE stmt FROM @alter_sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- ========================
+-- MIGRATION: Team phone + team member không bắt buộc user
+-- ========================
+SET @team_phone_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teams' AND COLUMN_NAME = 'phone'
+);
+SET @alter_sql = IF(@team_phone_exists = 0,
+    'ALTER TABLE teams ADD COLUMN phone VARCHAR(20) NULL AFTER name',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tm_name_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'team_members' AND COLUMN_NAME = 'name'
+);
+SET @alter_sql = IF(@tm_name_exists = 0,
+    'ALTER TABLE team_members ADD COLUMN name VARCHAR(100) NULL AFTER team_id',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tm_phone_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'team_members' AND COLUMN_NAME = 'phone'
+);
+SET @alter_sql = IF(@tm_phone_exists = 0,
+    'ALTER TABLE team_members ADD COLUMN phone VARCHAR(20) NULL AFTER name',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tm_user_nullable = (
+    SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'team_members' AND COLUMN_NAME = 'user_id'
+);
+SET @alter_sql = IF(@tm_user_nullable = 'NO',
+    'ALTER TABLE team_members MODIFY COLUMN user_id BIGINT NULL',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ========================
+-- MIGRATION: Match response hỗ trợ tham gia cá nhân
+-- ========================
+SET @mr_team_nullable = (
+    SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'match_responses' AND COLUMN_NAME = 'team_id'
+);
+SET @alter_sql = IF(@mr_team_nullable = 'NO',
+    'ALTER TABLE match_responses MODIFY COLUMN team_id BIGINT NULL',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @mr_join_type_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'match_responses' AND COLUMN_NAME = 'join_type'
+);
+SET @alter_sql = IF(@mr_join_type_exists = 0,
+    'ALTER TABLE match_responses ADD COLUMN join_type VARCHAR(20) NOT NULL DEFAULT ''TEAM'' AFTER team_id',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @mr_contact_phone_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'match_responses' AND COLUMN_NAME = 'contact_phone'
+);
+SET @alter_sql = IF(@mr_contact_phone_exists = 0,
+    'ALTER TABLE match_responses ADD COLUMN contact_phone VARCHAR(20) NULL AFTER join_type',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @mr_responder_user_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'match_responses' AND COLUMN_NAME = 'responder_user_id'
+);
+SET @alter_sql = IF(@mr_responder_user_exists = 0,
+    'ALTER TABLE match_responses ADD COLUMN responder_user_id BIGINT NULL AFTER team_id',
+    'SELECT 1');
+PREPARE stmt FROM @alter_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 SET NAMES utf8mb4;
 SET CHARACTER SET utf8mb4;
 

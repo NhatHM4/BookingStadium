@@ -79,40 +79,40 @@ public class TeamController {
     }
 
     /**
-     * Thêm thành viên (mời qua email)
+     * Thêm thành viên vào đội
      */
     @PostMapping("/teams/{id}/members")
-    @Operation(summary = "Mời thành viên vào đội")
+    @Operation(summary = "Thêm thành viên vào đội")
     public ResponseEntity<ApiResponse<TeamMemberResponse>> addMember(
             @PathVariable Long id,
             @Valid @RequestBody AddMemberRequest request) {
         TeamMemberResponse member = teamService.addMember(id, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Mời thành viên thành công", member));
+                .body(ApiResponse.success("Thêm thành viên thành công", member));
     }
 
     /**
      * Xóa thành viên (captain only)
      */
-    @PutMapping("/teams/{id}/members/{userId}/remove")
+    @PutMapping("/teams/{id}/members/{memberId}/remove")
     @Operation(summary = "Xóa thành viên khỏi đội (Captain)")
     public ResponseEntity<ApiResponse<Void>> removeMember(
             @PathVariable Long id,
-            @PathVariable Long userId) {
-        teamService.removeMember(id, userId);
+            @PathVariable Long memberId) {
+        teamService.removeMember(id, memberId);
         return ResponseEntity.ok(ApiResponse.success("Xóa thành viên thành công", null));
     }
 
     /**
      * Chuyển quyền đội trưởng
      */
-    @PutMapping("/teams/{id}/members/{userId}/captain")
+    @PutMapping("/teams/{id}/members/{memberId}/captain")
     @Operation(summary = "Chuyển quyền đội trưởng")
     public ResponseEntity<ApiResponse<TeamResponse>> transferCaptain(
             @PathVariable Long id,
-            @PathVariable Long userId) {
+            @PathVariable Long memberId) {
         return ResponseEntity.ok(ApiResponse.success("Chuyển quyền đội trưởng thành công",
-                teamService.transferCaptain(id, userId)));
+                teamService.transferCaptain(id, memberId)));
     }
 
     /**

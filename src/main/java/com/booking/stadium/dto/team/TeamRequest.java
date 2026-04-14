@@ -17,6 +17,10 @@ public class TeamRequest {
     @Size(max = 100, message = "Tên đội tối đa 100 ký tự")
     private String name;
 
+    @NotBlank(message = "SĐT đội không được để trống")
+    @Size(max = 20, message = "SĐT đội tối đa 20 ký tự")
+    private String phone;
+
     private String logoUrl;
 
     private String description;

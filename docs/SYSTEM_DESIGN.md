@@ -81,8 +81,8 @@ Hệ thống đặt sân bóng đá online, cho phép người dùng tìm kiếm
 - Ưu đãi giá khi đặt dài hạn (Owner cấu hình % giảm giá)
 
 ### 3.8 Quản Lý Đội Bóng (Team) - Customer
-- Tạo đội bóng (tên đội, logo, mô tả, loại sân ưa thích)
-- Thêm / xóa thành viên đội (mời qua email hoặc link)
+- Tạo đội bóng (tên đội, SĐT đội, logo, mô tả, loại sân ưa thích)
+- Thêm / xóa thành viên đội (không bắt buộc thành viên có tài khoản user)
 - Xem danh sách đội của mình
 - Chuyển quyền đội trưởng
 - Rời đội / Giải tán đội
@@ -91,8 +91,8 @@ Hệ thống đặt sân bóng đá online, cho phép người dùng tìm kiếm
 - Khi đặt sân, chọn option "Ráp kèo" → tạo kèo chờ đối thủ
 - Đăng kèo: chọn đội của mình, loại sân (5/7), trình độ, ghi chú
 - Xem danh sách kèo đang mở (filter theo khu vực, loại sân, ngày giờ, trình độ)
-- Nhận kèo: chọn đội của mình để nhận kèo
-- Hủy kèo (chủ kèo) / Rút kèo (đội nhận)
+- Nhận kèo: có thể theo đội hoặc tham gia cá nhân
+- Hủy kèo (chủ kèo) / Rút kèo (đội nhận hoặc cá nhân đã gửi)
 - Xem lịch sử các trận đã ráp
 - Chi phí chia đôi: mỗi đội trả 50% hoặc theo thỏa thuận (chủ kèo cấu hình)
 
@@ -275,6 +275,7 @@ recurring_bookings
 teams
 ├── id (BIGINT, PK, AUTO_INCREMENT)
 ├── name (VARCHAR 100, NOT NULL)
+├── phone (VARCHAR 20)
 ├── logo_url (VARCHAR 500)
 ├── description (TEXT)
 ├── preferred_field_type (ENUM: FIVE_A_SIDE, SEVEN_A_SIDE)
@@ -293,7 +294,9 @@ teams
 team_members
 ├── id (BIGINT, PK, AUTO_INCREMENT)
 ├── team_id (BIGINT, FK -> teams.id)
-├── user_id (BIGINT, FK -> users.id)
+├── name (VARCHAR 100)
+├── phone (VARCHAR 20)
+├── user_id (BIGINT, FK -> users.id, NULLABLE)
 ├── role (ENUM: CAPTAIN, MEMBER)
 ├── joined_at (DATETIME)
 ├── status (ENUM: PENDING, ACTIVE, LEFT, KICKED)
@@ -330,7 +333,10 @@ match_requests
 match_responses
 ├── id (BIGINT, PK, AUTO_INCREMENT)
 ├── match_request_id (BIGINT, FK -> match_requests.id)
-├── team_id (BIGINT, FK -> teams.id)
+├── team_id (BIGINT, FK -> teams.id, NULLABLE)
+├── responder_user_id (BIGINT, FK -> users.id, NULLABLE)
+├── join_type (ENUM: TEAM, INDIVIDUAL)
+├── contact_phone (VARCHAR 20)
 ├── message (TEXT)                    -- Lời nhắn từ đội muốn nhận kèo
 ├── status (ENUM: PENDING, ACCEPTED, REJECTED, WITHDRAWN)
 ├── responded_at (DATETIME)
@@ -463,8 +469,8 @@ match_requests (1)── (N) match_responses      : 1 kèo có nhiều lượt x
 | PUT | `/api/v1/teams/{id}` | Cập nhật thông tin đội | CUSTOMER (captain) |
 | DELETE | `/api/v1/teams/{id}` | Giải tán đội | CUSTOMER (captain) |
 | POST | `/api/v1/teams/{id}/members` | Thêm thành viên (mời) | CUSTOMER (captain) |
-| PUT | `/api/v1/teams/{id}/members/{userId}/remove` | Xóa thành viên | CUSTOMER (captain) |
-| PUT | `/api/v1/teams/{id}/members/{userId}/captain` | Chuyển quyền đội trưởng | CUSTOMER (captain) |
+| PUT | `/api/v1/teams/{id}/members/{memberId}/remove` | Xóa thành viên | CUSTOMER (captain) |
+| PUT | `/api/v1/teams/{id}/members/{memberId}/captain` | Chuyển quyền đội trưởng | CUSTOMER (captain) |
 | PUT | `/api/v1/teams/{id}/leave` | Rời đội | CUSTOMER (member) |
 | PUT | `/api/v1/team-invites/{id}/accept` | Chấp nhận lời mời vào đội | CUSTOMER |
 | PUT | `/api/v1/team-invites/{id}/reject` | Từ chối lời mời | CUSTOMER |
@@ -478,7 +484,7 @@ match_requests (1)── (N) match_responses      : 1 kèo có nhiều lượt x
 | PUT | `/api/v1/match-requests/{id}/cancel` | Hủy kèo | CUSTOMER (host) |
 | GET | `/api/v1/match-requests/my` | DS kèo tôi đã tạo | CUSTOMER |
 | GET | `/api/v1/match-requests/my-matches` | DS kèo tôi đã nhận | CUSTOMER |
-| POST | `/api/v1/match-requests/{id}/responses` | Gửi yêu cầu nhận kèo | CUSTOMER |
+| POST | `/api/v1/match-requests/{id}/responses` | Gửi yêu cầu nhận kèo (theo đội hoặc cá nhân) | CUSTOMER |
 | PUT | `/api/v1/match-requests/{id}/responses/{responseId}/accept` | Chấp nhận đội nhận kèo | CUSTOMER (host) |
 | PUT | `/api/v1/match-requests/{id}/responses/{responseId}/reject` | Từ chối đội nhận kèo | CUSTOMER (host) |
 | PUT | `/api/v1/match-requests/{id}/responses/{responseId}/withdraw` | Rút yêu cầu nhận kèo | CUSTOMER |
@@ -668,13 +674,13 @@ booking-stadium/
 
 ### 7.4 Đội bóng & Ráp kèo (Team & Match Making)
 19. **Tạo đội**: 1 user có thể tạo nhiều đội, mỗi đội có 1 đội trưởng
-20. **Thành viên**: Đội trưởng mời thành viên qua email, thành viên xác nhận mới vào đội
+20. **Thành viên**: Đội trưởng thêm thành viên theo `name` + `phone`, không bắt buộc có user
 21. **Tạo kèo**: Chỉ tạo kèo khi đã đặt sân + booking đang ở trạng thái CONFIRMED/DEPOSIT_PAID
 22. **Loại sân**: Kèo chỉ cho sân 5 và sân 7 (FIVE_A_SIDE, SEVEN_A_SIDE)
-23. **Nhận kèo**: Đội nhận kèo không được trùng với đội chủ kèo, 1 đội chỉ gửi 1 lần/kèo
+23. **Nhận kèo**: Có thể nhận theo đội hoặc cá nhân; không được tự nhận kèo do chính mình tạo
 24. **Chọn đối thủ**: Chủ kèo xem DS đội muốn nhận → chọn 1 đội → status = ACCEPTED
 25. **Chia chi phí**: Mặc định 50/50, chủ kèo có thể cấu hình tỷ lệ khác
-26. **Hết hạn kèo**: Kèo tự hết hạn trước giờ đá 4 tiếng nếu chưa có đội nhận
+26. **Hết hạn kèo**: Kèo tự hết hạn trước giờ đá 2 tiếng nếu chưa có phản hồi hợp lệ
 27. **Hủy kèo**: Chủ kèo hủy bất cứ lúc nào khi chưa ACCEPTED, booking vẫn giữ nguyên
 28. **Rút kèo**: Đội đã nhận kèo (ACCEPTED) rút → kèo quay về OPEN nếu chưa hết hạn
 29. **Hoàn thành**: Khi booking COMPLETED → match_request cũng COMPLETED

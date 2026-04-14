@@ -27,6 +27,9 @@ public class Team {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Column(length = 20)
+    private String phone;
+
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
