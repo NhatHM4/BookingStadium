@@ -85,6 +85,14 @@ app:
     default-password: Social@123456
   upload:
     dir: uploads
+  telegram:
+    bot-enabled: ${TELEGRAM_BOT_ENABLED:true}
+    bot-token: ${TELEGRAM_BOT_TOKEN:8748990134:AAHFwspDB47H42UPftdGkbvWmy3ofwjpVwg}
+    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:secret-test-123}
+    app-base-url: ${APP_BASE_URL:https://steersman-unbounded-unarmored.ngrok-free.dev}
+    conversation-timeout-minutes: ${TELEGRAM_CONVERSATION_TIMEOUT_MINUTES:15}
+    max-retry: ${TELEGRAM_BOT_MAX_RETRY:5}
+    worker-fixed-delay-ms: ${TELEGRAM_BOT_WORKER_DELAY_MS:10000}
 
 # ========================
 # Swagger / OpenAPI

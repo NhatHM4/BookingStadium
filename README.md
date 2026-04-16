@@ -51,3 +51,17 @@ docker-compose down
 # Stop & remove volumes (reset data)
 docker-compose down -v
 ```
+
+## Telegram Bot (Optional)
+
+Set these env vars before starting app:
+
+- `TELEGRAM_BOT_ENABLED` (`true|false`)
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+- `APP_BASE_URL` (frontend base URL used in link thông báo kèo)
+
+Webhook endpoint:
+
+- `POST /api/v1/telegram/webhook`
+- Required header when secret configured: `X-Telegram-Bot-Api-Secret-Token`

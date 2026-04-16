@@ -3,6 +3,7 @@ package com.booking.stadium.repository;
 import com.booking.stadium.entity.Field;
 import com.booking.stadium.enums.FieldType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,4 +18,9 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
     List<Field> findByStadiumIdAndFieldType(Long stadiumId, FieldType fieldType);
 
     List<Field> findByStadiumIdAndFieldTypeAndIsActiveTrue(Long stadiumId, FieldType fieldType);
+
+    List<Field> findByIsActiveTrue();
+
+    @Query("SELECT f FROM Field f JOIN FETCH f.stadium s WHERE f.isActive = true")
+    List<Field> findActiveFieldsWithStadium();
 }

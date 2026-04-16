@@ -7,8 +7,10 @@ import com.booking.stadium.exception.BadRequestException;
 import com.booking.stadium.exception.ResourceNotFoundException;
 import com.booking.stadium.exception.UnauthorizedException;
 import com.booking.stadium.repository.*;
+import com.booking.stadium.telegram.event.MatchRequestCreatedEvent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -31,19 +33,22 @@ public class MatchRequestService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public MatchRequestService(MatchRequestRepository matchRequestRepository,
                                MatchResponseRepository matchResponseRepository,
                                BookingRepository bookingRepository,
                                TeamRepository teamRepository,
                                TeamMemberRepository teamMemberRepository,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               ApplicationEventPublisher eventPublisher) {
         this.matchRequestRepository = matchRequestRepository;
         this.matchResponseRepository = matchResponseRepository;
         this.bookingRepository = bookingRepository;
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     // ========== MATCH REQUEST ==========
@@ -144,6 +149,7 @@ public class MatchRequestService {
         bookingRepository.save(booking);
 
         matchRequest = matchRequestRepository.save(matchRequest);
+        publishMatchRequestCreatedEvent(matchRequest);
         return MatchRequestResponse.fromEntity(matchRequest);
     }
 
@@ -480,5 +486,20 @@ public class MatchRequestService {
                 .getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", userDetails.getUsername()));
+    }
+
+    private void publishMatchRequestCreatedEvent(MatchRequest matchRequest) {
+        eventPublisher.publishEvent(MatchRequestCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .matchRequestId(matchRequest.getId())
+                .matchCode(matchRequest.getMatchCode())
+                .stadiumName(matchRequest.getBooking().getField().getStadium().getName())
+                .fieldName(matchRequest.getBooking().getField().getName())
+                .bookingDate(matchRequest.getBooking().getBookingDate())
+                .startTime(matchRequest.getBooking().getTimeSlot().getStartTime())
+                .endTime(matchRequest.getBooking().getTimeSlot().getEndTime())
+                .hostTeamName(matchRequest.getHostTeam().getName())
+                .contactPhone(matchRequest.getContactPhone())
+                .build());
     }
 }

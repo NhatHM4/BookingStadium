@@ -9,6 +9,8 @@ import com.booking.stadium.exception.BadRequestException;
 import com.booking.stadium.exception.ResourceNotFoundException;
 import com.booking.stadium.exception.UnauthorizedException;
 import com.booking.stadium.repository.*;
+import com.booking.stadium.telegram.event.MatchRequestCreatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +39,7 @@ public class BookingService {
     private final DepositPolicyRepository depositPolicyRepository;
     private final MatchRequestRepository matchRequestRepository;
     private final TeamRepository teamRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public BookingService(BookingRepository bookingRepository,
             FieldRepository fieldRepository,
@@ -44,7 +47,8 @@ public class BookingService {
             UserRepository userRepository,
             DepositPolicyRepository depositPolicyRepository,
             MatchRequestRepository matchRequestRepository,
-            TeamRepository teamRepository) {
+            TeamRepository teamRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.bookingRepository = bookingRepository;
         this.fieldRepository = fieldRepository;
         this.timeSlotRepository = timeSlotRepository;
@@ -52,6 +56,7 @@ public class BookingService {
         this.depositPolicyRepository = depositPolicyRepository;
         this.matchRequestRepository = matchRequestRepository;
         this.teamRepository = teamRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     // ========== PUBLIC ==========
@@ -526,7 +531,8 @@ public class BookingService {
                 .status(MatchStatus.OPEN)
                 .build();
 
-        matchRequestRepository.save(matchRequest);
+        matchRequest = matchRequestRepository.save(matchRequest);
+        publishMatchRequestCreatedEvent(matchRequest);
     }
 
     /**
@@ -567,5 +573,20 @@ public class BookingService {
         String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String uuid = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         return String.format("M%s%s", dateStr, uuid);
+    }
+
+    private void publishMatchRequestCreatedEvent(MatchRequest matchRequest) {
+        eventPublisher.publishEvent(MatchRequestCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .matchRequestId(matchRequest.getId())
+                .matchCode(matchRequest.getMatchCode())
+                .stadiumName(matchRequest.getBooking().getField().getStadium().getName())
+                .fieldName(matchRequest.getBooking().getField().getName())
+                .bookingDate(matchRequest.getBooking().getBookingDate())
+                .startTime(matchRequest.getBooking().getTimeSlot().getStartTime())
+                .endTime(matchRequest.getBooking().getTimeSlot().getEndTime())
+                .hostTeamName(matchRequest.getHostTeam().getName())
+                .contactPhone(matchRequest.getContactPhone())
+                .build());
     }
 }
