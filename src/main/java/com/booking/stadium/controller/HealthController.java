@@ -1,7 +1,6 @@
 package com.booking.stadium.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,11 +22,8 @@ public class HealthController {
     @Autowired
     private DataSource dataSource;
 
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
-
     @GetMapping
-    @Operation(summary = "Kiểm tra MySQL + Redis")
+    @Operation(summary = "Kiểm tra MySQL")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         Map<String, Object> health = new LinkedHashMap<>();
         health.put("status", "UP");
@@ -42,26 +38,6 @@ public class HealthController {
             ));
         } catch (Exception e) {
             health.put("mysql", Map.of(
-                    "status", "DOWN",
-                    "error", e.getMessage()
-            ));
-            health.put("status", "DEGRADED");
-        }
-
-        // Check Redis
-        try {
-            String pong = redisTemplate.getConnectionFactory()
-                    .getConnection().ping();
-            redisTemplate.opsForValue().set("health:check", "ok");
-            String value = (String) redisTemplate.opsForValue().get("health:check");
-            redisTemplate.delete("health:check");
-            health.put("redis", Map.of(
-                    "status", "UP",
-                    "ping", pong,
-                    "read_write", "ok"
-            ));
-        } catch (Exception e) {
-            health.put("redis", Map.of(
                     "status", "DOWN",
                     "error", e.getMessage()
             ));

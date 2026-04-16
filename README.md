@@ -7,7 +7,7 @@
 
 ## Quick Start
 
-### 1. Start Docker containers (MySQL + Redis)
+### 1. Start Docker containers (MySQL)
 ```bash
 docker-compose up -d
 ```
@@ -41,7 +41,6 @@ http://localhost:8080/swagger-ui.html
 | Service | Container | Port (Host) | Port (Container) | Credentials |
 |---------|-----------|-------------|-------------------|-------------|
 | MySQL 8.0 | booking-stadium-mysql | 3307 | 3306 | booking_user / booking_pass |
-| Redis 7 | booking-stadium-redis | 6380 | 6379 | password: redis123 |
 
 ## Stop & Cleanup
 ```bash

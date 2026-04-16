@@ -22,27 +22,8 @@ services:
     networks:
       - booking-network
 
-  redis:
-    image: redis:7-alpine
-    container_name: booking-stadium-redis
-    restart: unless-stopped
-    ports:
-      - "6380:6379"
-    command: redis-server --requirepass redis123 --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - booking-network
-
 volumes:
   mysql_data:
-    driver: local
-  redis_data:
     driver: local
 
 networks:

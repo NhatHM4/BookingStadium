@@ -49,22 +49,6 @@ spring:
       max-file-size: 5MB
       max-request-size: 10MB
 
-  # ========================
-  # Redis Configuration
-  # ========================
-  data:
-    redis:
-      host: localhost
-      port: 6380
-      password: redis123
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 16
-          max-idle: 8
-          min-idle: 2
-          max-wait: 3000ms
-
 # ========================
 # Server Configuration
 # ========================
